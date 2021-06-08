@@ -47,6 +47,8 @@ export default class Input {
                     },
                     set: (val) => {
                         this.element.value = DateFormat(val, this.format);
+                        // trigger change event to execute event listeners on the date element
+                        this.element.dispatchEvent(new Event('change', { bubbles: true }));
                     },
                 },
                 valueAsNumber: {
@@ -63,6 +65,32 @@ export default class Input {
                 },
             },
         );
+
+        // watch for element attribute changes
+        if ("MutationObserver" in window) {
+            const mutationObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.attributeName.indexOf('min') !== -1 || mutation.attributeName.indexOf('max') !== -1) {
+                        this.dateRange = this.getDateRange();
+                    } else if (mutation.attributeName === 'lang') {
+                        this.locale = this.element.getAttribute(mutation.attributeName);
+                        this.localeLabels = this.getLocaleLabels();
+                    } else if (mutation.attributeName === 'data-first-day') {
+                        this.firstDayOfWeek = this.element.getAttribute(mutation.attributeName);
+                    } else if (mutation.attributeName === 'data-date-format' || mutation.attributeName === 'date-format') {
+                        const date = this.element.valueAsDate;
+                        this.format = this.element.getAttribute(mutation.attributeName);
+                        if (date) {
+                            this.element.valueAsDate = date; // reset date to update the format
+                        }
+                    }
+                });
+            });
+
+            mutationObserver.observe(this.element, {
+                attributes: true,
+            });
+        }
 
         // Open the picker when the input get focus,
         // also on various click events to capture it in all corner cases.
